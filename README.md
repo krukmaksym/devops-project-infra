@@ -132,7 +132,7 @@ my-devops-project-infra/
 │   │   └── terragrunt-exec/      # Execute Terragrunt with Doppler secrets
 │   └── workflows/
 │       ├── terraform-pr.yml      # PR validation (format, validate, plan, security)
-│       ├── terraform-deploy.yml  # Deployment workflow (manual + auto on merge)
+│       ├── terraform-deploy.yml  # Deployment workflow (manual only)
 │       ├── destroy-infra.yml     # Infrastructure destroy (with safeguards)
 │       └── claude-review.yml     # AI-powered code review (on @claude comment)
 ├── CLAUDE.md                    # Claude code review instructions & guardrails
@@ -289,7 +289,7 @@ Runs on every pull request to `main` for validation and planning.
 
 #### 2. Deployment Workflow ([`terraform-deploy.yml`](.github/workflows/terraform-deploy.yml))
 
-Automated deployment workflow triggered on push to `main` or manual workflow dispatch.
+Manual deployment workflow (`workflow_dispatch` only). Merges to `main` do not auto-apply, so torn-down environments stay down until deployed deliberately.
 
 **Features:**
 - Manual deployment with environment selection (dev/stage/prod)

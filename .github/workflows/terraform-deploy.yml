@@ -1,11 +1,8 @@
 name: Terraform Deployment
 
+# Manual only: environments are kept torn down by default, so merges to main
+# must not auto-apply (that would recreate the dev cluster and incur cost).
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'infra/terraform/**'
   workflow_dispatch:
     inputs:
       environment:
