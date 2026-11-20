@@ -35,49 +35,54 @@ jobs:
   destroy:
     name: Destroy ${{ inputs.environment }}
     runs-on: ubuntu-latest
+    # GitHub Environment gate: destroying "all" requires prod approval.
+    # Configure required reviewers in Settings → Environments.
+    environment: ${{ inputs.environment == 'all' && 'prod' || inputs.environment }}
     permissions:
       contents: read
+    env:
+      TG_NON_INTERACTIVE: "true"
+      TARGET_ENV: ${{ inputs.environment }}
+      RESOURCE: ${{ inputs.resource || 'all' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Check Confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
         run: |
-          if [ "${{ inputs.confirmation }}" != "DESTROY" ]; then
+          if [ "$CONFIRMATION" != "DESTROY" ]; then
             echo "❌ Error: Confirmation text does not match 'DESTROY'. Aborting."
             exit 1
           fi
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
 
       - name: Setup Terragrunt
-        uses: autero1/action-terragrunt@v3
+        uses: autero1/action-terragrunt@aefb0a43c4f5503a91fefb307745c4d51c26ed0e # v3.0.2
         with:
           terragrunt-version: ${{ env.TERRAGRUNT_VERSION }}
 
       - name: Install Doppler
-        run: |
-          (curl -Ls https://cli.doppler.com/install.sh || wget -qO- https://cli.doppler.com/install.sh) | sudo sh
+        uses: dopplerhq/cli-action@4819d808ab99e5cde19a0637a16536a4038fad73 # v4.0.1
 
       - name: Strip ArgoCD Application Finalizers
         continue-on-error: true
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+          TF_VAR_tf_cloud_token: ${{ secrets.TF_CLOUD_TOKEN }}
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_CLOUD_TOKEN }}
         run: |
-          RESOURCE="${{ inputs.resource || 'all' }}"
-          TARGET_ENV="${{ inputs.environment }}"
-
           # Only needed when argocd resources are being destroyed
           if [ "$RESOURCE" == "network" ] || [ "$RESOURCE" == "kubernetes" ]; then
             echo "Skipping finalizer cleanup (resource=$RESOURCE)"
             exit 0
           fi
-
-          export DOPPLER_TOKEN=${{ secrets.DOPPLER_TOKEN }}
-          export TF_TOKEN_app_terraform_io=${{ secrets.TF_CLOUD_TOKEN }}
-          export TG_NON_INTERACTIVE=true
 
           strip_argocd_finalizers() {
             local env=$1
@@ -119,19 +124,12 @@ jobs:
           fi
 
       - name: Destroy Infrastructure
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+          TF_VAR_tf_cloud_token: ${{ secrets.TF_CLOUD_TOKEN }}
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_CLOUD_TOKEN }}
         run: |
-          TARGET_ENV="${{ inputs.environment }}"
           echo "💥 Destroying $TARGET_ENV..."
-          
-          export DOPPLER_TOKEN=${{ secrets.DOPPLER_TOKEN }}
-          export TF_VAR_tf_cloud_token=${{ secrets.TF_CLOUD_TOKEN }}
-          
-          # Set the Terraform CLI Cloud Token
-          export TF_TOKEN_app_terraform_io=${{ secrets.TF_CLOUD_TOKEN }}
-          
-          export TG_NON_INTERACTIVE=true
-          
-          RESOURCE="${{ inputs.resource || 'all' }}"
           echo "Target Resource: $RESOURCE"
           
           if [ "$TARGET_ENV" == "all" ]; then

@@ -20,6 +20,17 @@ variable "environment" {
   type        = string
 }
 
+variable "server_service_type" {
+  description = "Service type for argocd-server. ClusterIP (default) = reachable only via kubectl port-forward. Use LoadBalancer only with TLS + SSO and lb_source_ranges set."
+  type        = string
+  default     = "ClusterIP"
+
+  validation {
+    condition     = contains(["ClusterIP", "LoadBalancer"], var.server_service_type)
+    error_message = "server_service_type must be ClusterIP or LoadBalancer."
+  }
+}
+
 variable "lb_source_ranges" {
   description = "CIDRs allowed to reach the ArgoCD LoadBalancer. Empty list = no loadBalancerSourceRanges set (LB open, secured by HTTPS + auth)."
   type        = list(string)

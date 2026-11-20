@@ -1,0 +1,18 @@
+version: 2
+updates:
+  # Keeps SHA-pinned actions current (updates the SHA and the version comment)
+  - package-ecosystem: github-actions
+    directories:
+      - "/"
+      - "/.github/actions/*"
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  - package-ecosystem: terraform
+    directories:
+      - "/infra/terraform/modules/*"
+    schedule:
+      interval: weekly

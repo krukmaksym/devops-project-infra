@@ -480,7 +480,7 @@ kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.pas
 
 # Open http://localhost:8080 and login with user "admin"
 
-# Get the LoadBalancer external IP (reserved for future HTTPS setup)
+# Phase 2 only (server_service_type = "LoadBalancer"): get the external IP
 kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
 ```
 

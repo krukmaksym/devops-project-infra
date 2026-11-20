@@ -46,6 +46,7 @@ resource "helm_release" "argocd" {
   replace         = var.replace_on_failure
 
   values = [templatefile("${path.module}/values.yaml", {
+    server_service_type    = var.server_service_type
     lb_source_ranges       = var.lb_source_ranges
     server_insecure        = var.server_insecure
     admin_enabled          = var.admin_enabled
