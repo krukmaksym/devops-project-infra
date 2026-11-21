@@ -90,6 +90,16 @@ runs:
           done
         fi
 
+        # root.hcl (backend + shared config) affects every stack: plan all envs x modules
+        if echo "$changed_files" | tr ' ' '\n' | grep -qx "infra/terraform/live/root.hcl"; then
+          echo "🌍 root.hcl changed: planning every stack"
+          for env in dev stage prod; do
+            for module in network kubernetes argocd; do
+              matrix_items="${matrix_items}{\"env\":\"${env}\",\"module\":\"${module}\"},"
+            done
+          done
+        fi
+
         # If live config changed (e.g., live/dev/network/terragrunt.hcl), plan only that specific env
         if [ -n "$live_changes" ]; then
           echo "🔧 Live changes detected: $live_changes"
