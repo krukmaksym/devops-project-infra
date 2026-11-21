@@ -208,7 +208,7 @@ tflint --version
 
 1. **Clone the repository**
    ```bash
-   git clone git@github.com:krukmaksym/my-devops-project-infra.git devops-project-infra
+   git clone git@github.com:krukmaksym/devops-project-infra.git
    cd devops-project-infra
    ```
 
