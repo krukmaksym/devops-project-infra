@@ -1,0 +1,111 @@
+# ONE-OFF: migrate Terraform state from HCP Terraform to DigitalOcean Spaces.
+# Runs once when this file is pushed to the migration branch, then gets deleted.
+# Never merged to main.
+name: Migrate state to Spaces (one-off)
+
+on:
+  push:
+    branches: [claude/nice-sagan-dsyjyc]
+    paths: ['.github/workflows/migrate-state.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-state
+  cancel-in-progress: false
+
+env:
+  TERRAFORM_VERSION: '1.14.0'
+  TERRAGRUNT_VERSION: '0.93.11'
+  TG_NON_INTERACTIVE: 'true'
+  # Pass Terraform's stdout through untouched (no Terragrunt log prefixes),
+  # otherwise `state pull` output is not valid JSON.
+  TG_TF_FORWARD_STDOUT: 'true'
+  STACKS: >-
+    dev/network dev/kubernetes dev/argocd
+    stage/network stage/kubernetes stage/argocd
+    prod/network prod/kubernetes prod/argocd
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main (old HCP Terraform backend)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+          path: old
+
+      - name: Checkout this branch (new Spaces backend)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          path: new
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Setup Terragrunt
+        uses: autero1/action-terragrunt@aefb0a43c4f5503a91fefb307745c4d51c26ed0e # v3.0.2
+        with:
+          terragrunt-version: ${{ env.TERRAGRUNT_VERSION }}
+
+      - name: Install Doppler
+        uses: dopplerhq/cli-action@4819d808ab99e5cde19a0637a16536a4038fad73 # v4.0.1
+
+      - name: Pull state from HCP Terraform
+        working-directory: old
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_CLOUD_TOKEN }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/tfstate"
+          for s in $STACKS; do
+            f="$RUNNER_TEMP/tfstate/$(echo "$s" | tr / -).tfstate"
+            (cd "infra/terraform/live/$s" && doppler run --name-transformer tf-var -- \
+              terragrunt state pull) > "$f"
+            if [ -s "$f" ] && ! jq -e . "$f" > /dev/null 2>&1; then
+              echo "❌ $s: pulled state is not valid JSON, aborting"
+              exit 1
+            fi
+            n=$(jq '[.resources[]?] | length' "$f" 2>/dev/null || echo 0)
+            echo "$s: $n resource(s) in HCP Terraform"
+            # Network stacks are known to hold a VPC; zero means the pull went wrong
+            case "$s" in */network)
+              [ "$n" -gt 0 ] || { echo "❌ $s: expected a VPC in state, got none"; exit 1; } ;;
+            esac
+          done
+
+      - name: Push stacks with resources to Spaces
+        working-directory: new
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: |
+          for s in $STACKS; do
+            f="$RUNNER_TEMP/tfstate/$(echo "$s" | tr / -).tfstate"
+            n=$(jq '[.resources[]?] | length' "$f" 2>/dev/null || echo 0)
+            if [ "$n" -eq 0 ]; then
+              echo "⏭️  $s: no resources, nothing to migrate"
+              continue
+            fi
+            echo "➡️  $s: migrating $n resource(s)"
+            (cd "infra/terraform/live/$s" && F="$f" doppler run -- doppler run --name-transformer tf-var -- sh -c '
+              set -e
+              terragrunt init -reconfigure -input=false > /dev/null
+              existing=$(terragrunt state list 2>/dev/null || true)
+              if [ -n "$existing" ]; then
+                echo "⚠️  already has state in Spaces, skipping (not overwriting)"
+                exit 0
+              fi
+              terragrunt state push "$F"
+              echo "✅ pushed; resources now in Spaces:"
+              terragrunt state list
+            ')
+          done
+
+      - name: Remove local state copies
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/tfstate"
