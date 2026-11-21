@@ -3,26 +3,29 @@
 > A production-grade Infrastructure-as-Code project demonstrating advanced DevOps/SRE practices, built with Terraform, Terragrunt, Kubernetes, and modern cloud-native tooling.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Terraform](https://img.shields.io/badge/Terraform-1.14.0-623CE4?logo=terraform)](https://www.terraform.io/)
+[![Terraform](https://img.shields.io/badge/Terraform-1.17.2-623CE4?logo=terraform)](https://www.terraform.io/)
 [![DigitalOcean](https://img.shields.io/badge/Cloud-DigitalOcean-0080FF?logo=digitalocean)](https://www.digitalocean.com/)
 
 ---
 
 ## Table of Contents
 
+- [Documentation](#documentation)
 - [Overview](#overview)
 - [Current Architecture](#current-architecture)
 - [Technology Stack](#technology-stack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
 - [Current Implementation Status](#current-implementation-status)
-- [Development Roadmap](https://github.com/krukmaksym/devops-project-infra/blob/main/DEVELOPMENT.md)
+- [CI/CD Pipeline](#cicd-pipeline)
+- [Development Roadmap](#development-roadmap)
 - [Usage](#usage)
+- [Module Documentation](#module-documentation)
 - [Contributing](#contributing)
 - [License](#license)
+- [Contact & Portfolio](#contact--portfolio)
 
 ---
-
 
 ## Documentation
 
@@ -58,7 +61,7 @@ This project serves as a comprehensive demonstration of Senior DevOps and SRE ca
 │  │  │           VPC (10.x.0.0/24)                    │   │    │
 │  │  │                                                │   │    │
 │  │  │  ┌──────────────────────────────────────────┐  │   │    │
-│  │  │  │  Kubernetes Cluster (DOKS 1.35)          │  │   │    │
+│  │  │  │  Kubernetes Cluster (DOKS 1.37)          │  │   │    │
 │  │  │  │                                          │  │   │    │
 │  │  │  │  ┌─────────────────────────────────────┐ │  │   │    │
 │  │  │  │  │   Application Node Pool             │ │  │   │    │
@@ -98,9 +101,9 @@ This project serves as a comprehensive demonstration of Senior DevOps and SRE ca
 ## Technology Stack
 
 ### Infrastructure & Platform
-- **IaC**: Terraform 1.14.0 + Terragrunt 0.93.11 (DRY configuration)
+- **IaC**: Terraform 1.17.2 + Terragrunt 1.2.2 (DRY configuration)
 - **Cloud Provider**: DigitalOcean
-- **Container Orchestration**: Kubernetes (DOKS) 1.35.1
+- **Container Orchestration**: Kubernetes (DOKS) 1.37.2
 - **State Management**: DigitalOcean Spaces (S3 backend, native lockfile locking)
 - **Secrets Management**: Doppler
 
@@ -126,26 +129,29 @@ This project serves as a comprehensive demonstration of Senior DevOps and SRE ca
 ```
 devops-project-infra/
 ├── .github/
-│   ├── actions/                  # Reusable composite actions
-│   │   ├── detect-infra-changes/ # Smart change detection for matrix strategy
-│   │   ├── setup-terragrunt/     # Install Terraform, Terragrunt, Doppler
-│   │   └── terragrunt-exec/      # Execute Terragrunt with Doppler secrets
-│   └── workflows/
-│       ├── terraform-pr.yml      # PR validation (format, validate, plan, security)
-│       ├── terraform-deploy.yml  # Deployment workflow (manual only)
-│       └── destroy-infra.yml     # Infrastructure destroy (with safeguards)
-├── CLAUDE.md                    # Project guardrails for Claude Code
-├── .pre-commit-config.yaml      # Pre-commit hooks configuration
-├── .github/dependabot.yml       # Weekly updates for pinned actions & providers
-├── docs/                        # Project documentation
-│   ├── architecture/            # Architecture diagrams
-│   └── troubleshooting.md       # Troubleshooting guide
-├── Makefile                     # Automation shortcuts for Terragrunt
-├── README.md                    # This file
-├── LICENSE                      # MIT License
-├── gitops/                      # ArgoCD-managed manifests (App-of-Apps)
-│   ├── apps/{dev,stage,prod}/   # Application manifests per environment
-│   └── monitoring/              # VictoriaMetrics + Grafana Helm values
+│   ├── actions/                    # Reusable composite actions
+│   │   ├── detect-infra-changes/   # Smart change detection for matrix strategy
+│   │   ├── infracost-estimate/     # Cost estimate posted on PRs
+│   │   ├── setup-terragrunt/       # Install Terraform, Terragrunt, Doppler
+│   │   └── terragrunt-exec/        # Execute Terragrunt with Doppler secrets
+│   ├── workflows/
+│   │   ├── terraform-pr.yml        # PR validation (format, validate, plan, security)
+│   │   ├── terraform-deploy.yml    # Deployment workflow (manual only)
+│   │   └── destroy-infra.yml       # Infrastructure destroy (with safeguards)
+│   └── dependabot.yml              # Weekly updates for pinned actions & providers
+├── .pre-commit-config.yaml         # Pre-commit hooks configuration
+├── CLAUDE.md                       # Project guardrails for Claude Code
+├── LICENSE                         # MIT License
+├── Makefile                        # Automation shortcuts for Terragrunt
+├── README.md                       # This file
+├── docs/                           # Project documentation
+│   ├── architecture/               # Architecture diagrams
+│   └── troubleshooting.md          # Troubleshooting guide
+├── gitops/                         # ArgoCD-managed manifests (App-of-Apps)
+│   ├── apps/{dev,stage,prod}/      # Application manifests per environment
+│   └── monitoring/                 # VictoriaMetrics + Grafana Helm values
+├── scripts/
+│   └── doppler-tf.sh               # Runs a command with Doppler secrets (TF_VAR_* + AWS_* backend keys)
 └── infra/
     └── terraform/
         ├── modules/              # Reusable Terraform modules
@@ -153,7 +159,7 @@ devops-project-infra/
         │   ├── kubernetes/       # DOKS cluster + node pools
         │   └── argocd/           # ArgoCD GitOps controller
         └── live/                 # Environment-specific configurations
-            ├── root.hcl          # Global Terragrunt config (TF Cloud backend)
+            ├── root.hcl          # Global Terragrunt config (DO Spaces S3 backend)
             ├── _env/             # Shared environment variable definitions
             │   ├── network.hcl   # Network configs per env
             │   ├── kubernetes.hcl # K8s configs per env
@@ -179,20 +185,30 @@ devops-project-infra/
 ### Prerequisites
 
 ```bash
-# Required tools
-brew install terraform terragrunt doppler pre-commit
+# Core tools
+brew install hashicorp/tap/terraform terragrunt doppler pre-commit
+
+# Cluster access
+brew install doctl kubectl
+
+# Tools used by the pre-commit hooks
+brew install tfsec trivy checkov terraform-docs
+# tflint is no longer in Homebrew: download the release for your platform from
+# https://github.com/terraform-linters/tflint/releases, verify it against
+# checksums.txt and put the binary on your PATH (e.g. ~/.local/bin)
 
 # Verify installations
-terraform version    # Should be 1.14.0
-terragrunt --version
+terraform version    # Should be 1.17.2
+terragrunt --version # Should be 1.2.2
 doppler --version
+tflint --version
 ```
 
 ### Initial Setup
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/devops-project-infra.git
+   git clone git@github.com:krukmaksym/my-devops-project-infra.git devops-project-infra
    cd devops-project-infra
    ```
 
@@ -204,7 +220,8 @@ doppler --version
 3. **Configure Doppler secrets**
    ```bash
    doppler login
-   doppler setup
+   # Scope this folder to the dev config, so local runs never use prod secrets
+   doppler setup --project my-devops-project --config dev
    # Add required secrets (uppercase in Doppler UI):
    # - DO_TOKEN (DigitalOcean API token; becomes TF_VAR_do_token)
    # - AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (Spaces key for the state bucket)
@@ -239,7 +256,7 @@ doppler --version
 |-----------|-------------|
 | **Multi-environment setup** | dev, stage, prod with graduated node sizing |
 | **Network module** | VPC provisioning with environment-specific CIDR blocks |
-| **Kubernetes module** | DOKS 1.35 cluster with app + monitoring node pools, auto-scaling, monitoring pool taint |
+| **Kubernetes module** | DOKS 1.37 cluster with app + monitoring node pools, auto-scaling, monitoring pool taint |
 | **Monitoring (GitOps)** | VictoriaMetrics + Grafana deployed by ArgoCD from `gitops/`, with tolerations and persistent storage |
 | **ArgoCD module** | GitOps controller bootstrapped via Terraform Helm, ClusterIP service (port-forward access), GitHub OAuth SSO prepared (Dex), team-scoped RBAC |
 | **Terragrunt DRY config** | Centralized `_env/` configs, per-module provider generation, mock outputs for CI |
@@ -319,15 +336,15 @@ Manual workflow for safely destroying infrastructure with safeguards.
 #### Composite Actions
 
 **[setup-terragrunt](.github/actions/setup-terragrunt/action.yml)**
-- Installs Terraform 1.14.0
-- Installs Terragrunt 0.93.11 (SHA-pinned action, no unverified binary download)
+- Installs Terraform 1.17.2
+- Installs Terragrunt 1.2.2 (SHA-pinned action, no unverified binary download)
 - Installs Doppler CLI via the official `dopplerhq/cli-action`
 
 **[terragrunt-exec](.github/actions/terragrunt-exec/action.yml)**
 - Executes Terragrunt commands with Doppler secrets injection
 - Handles exit codes properly for workflow failure detection
 - Captures output for PR comments
-- TF Cloud token passed directly to avoid transformation
+- Runs through `scripts/doppler-tf.sh`, so Spaces backend keys keep their `AWS_*` names
 
 #### Workflow Security
 
@@ -354,7 +371,7 @@ Deploy and destroy share a `terraform-state` concurrency group, so state-changin
 - [x] Multi-environment Terragrunt setup (dev/stage/prod)
 - [x] Network module (VPC per environment)
 - [x] Kubernetes module (DOKS with app + monitoring node pools, taints, auto-scaling)
-- [x] Monitoring module (VictoriaMetrics + Grafana via Helm)
+- [x] Monitoring stack (VictoriaMetrics + Grafana; Terraform Helm at first, now ArgoCD-managed)
 - [x] Doppler secrets management integration
 - [x] Remote state (Terraform Cloud, migrated to DigitalOcean Spaces)
 - [x] Pre-commit hooks (fmt, tflint, tfsec, trivy, checkov, terraform-docs)
@@ -459,7 +476,7 @@ cd infra/terraform/live/dev/network
 
 # Run all modules in environment
 cd infra/terraform/live/dev
-"$TG" terragrunt run-all apply
+"$TG" terragrunt run --all apply
 ```
 
 ### Accessing Kubernetes Clusters
@@ -476,16 +493,28 @@ kubectl get pods --all-namespaces
 ### Accessing ArgoCD
 
 ```bash
-# Port-forward to ArgoCD server (Phase 1 — server.insecure=true, HTTP only)
+# Port-forward to ArgoCD server (current setup: ClusterIP, server.insecure=true, HTTP only)
 kubectl port-forward svc/argocd-server -n argocd 8080:80
 
 # Get the initial admin password
 kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d
 
-# Open http://localhost:8080 and login with user "admin"
+# Open http://localhost:8080 and log in with user "admin"
 
-# Phase 2 only (server_service_type = "LoadBalancer"): get the external IP
+# Only when opted in (server_service_type = "LoadBalancer"): get the external IP
 kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+```
+
+### Accessing Grafana
+
+```bash
+# Port-forward to Grafana
+kubectl port-forward svc/monitoring-grafana -n monitoring 3000:80
+
+# Get the admin password
+kubectl get secret monitoring-grafana -n monitoring -o jsonpath='{.data.admin-password}' | base64 -d
+
+# Open http://localhost:3000 and log in with user "admin"
 ```
 
 ### GitOps Promotion (dev → stage → prod)
@@ -526,20 +555,6 @@ Each environment tracks its own Git revision, controlled via `infra/terraform/li
    Terraform updates the `argocd-apps` Helm release, which patches the root `Application`'s `targetRevision`. ArgoCD detects the change and syncs the stage cluster to the new tag.
 
 > **Note**: `prod` uses `prune: false` — removed manifests are never auto-deleted. After a tag promotion, manually sync or delete stale resources in the ArgoCD UI if needed.
-
----
-
-### Accessing Grafana
-
-```bash
-# Port-forward to Grafana
-kubectl port-forward svc/vm-stack-grafana -n monitoring 3000:80
-
-# Get the admin password
-kubectl get secret vm-stack-grafana -n monitoring -o jsonpath='{.data.admin-password}' | base64 -d
-
-# Open http://localhost:3000 and login with user "admin"
-```
 
 ---
 
@@ -675,9 +690,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Contact & Portfolio
 
-**Author**: Maksym Kruk
-**LinkedIn**: [https://www.linkedin.com/in/krukmaksym/](LinkedIn)
-**GitHub**: [https://github.com/krukmaksym](GitHub)
+- **Author**: Maksym Kruk
+- **LinkedIn**: [linkedin.com/in/krukmaksym](https://www.linkedin.com/in/krukmaksym/)
+- **GitHub**: [github.com/krukmaksym](https://github.com/krukmaksym)
 
 ---
 
@@ -695,15 +710,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 | Metric | Value |
 |--------|-------|
 | Environments | 3 (dev, stage, prod) |
-| Terraform Modules | 4 (network, kubernetes, monitoring, argocd) |
-| Lines of HCL/YAML | ~718 |
+| Terraform Modules | 3 (network, kubernetes, argocd) |
+| Lines of HCL/YAML | ~2,350 |
 | Cloud Regions | 1 (fra1) |
-| Kubernetes Version | 1.35.1-do.0 |
+| Kubernetes Version | 1.37.2-do.0 |
 | Total Nodes (dev) | 3-5 (auto-scaled: 2-4 app + 1 monitoring) |
 | GitHub Actions Workflows | 3 (PR validation, deployment, destroy) |
 
 ---
 
-**Status**: 🚧 Active Development
-**Last Updated**: 2026-03-16
-**Version**: 0.5.0 (ArgoCD GitOps Bootstrap)
+**Status**: 🚧 Active Development · **Last Updated**: 2026-11-21 · **Version**: 0.5.0 (ArgoCD GitOps Bootstrap)

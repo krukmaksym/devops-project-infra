@@ -15,7 +15,7 @@ spec:
     # Deploy the Helm chart, referencing values from Git
     - repoURL: https://victoriametrics.github.io/helm-charts/
       chart: victoria-metrics-k8s-stack
-      targetRevision: "0.72.4"
+      targetRevision: "0.98.1"
       helm:
         valueFiles:
           - $values/gitops/monitoring/values-nonprod.yaml

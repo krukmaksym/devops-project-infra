@@ -7,11 +7,11 @@ inputs:
   terraform-version:
     description: 'Terraform version'
     required: false
-    default: '1.14.0'
+    default: '1.17.2'
   terragrunt-version:
     description: 'Terragrunt version'
     required: false
-    default: '0.93.11'
+    default: '1.2.2'
 
 runs:
   using: 'composite'

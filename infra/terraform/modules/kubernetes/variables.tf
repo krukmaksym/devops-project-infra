@@ -16,9 +16,9 @@ variable "environment" {
 }
 
 variable "k8s_version" {
-  description = "value"
+  description = "DOKS version slug (list with: doctl kubernetes options versions)"
   type        = string
-  default     = "1.32.10-do.2"
+  default     = "1.37.2-do.0"
 }
 
 variable "vpc_id" {

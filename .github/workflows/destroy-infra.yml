@@ -33,8 +33,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  TERRAFORM_VERSION: '1.14.0'
-  TERRAGRUNT_VERSION: '0.93.11'
+  TERRAFORM_VERSION: '1.17.2'
+  TERRAGRUNT_VERSION: '1.2.2'
 
 jobs:
   destroy:

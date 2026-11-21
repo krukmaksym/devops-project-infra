@@ -2,15 +2,15 @@
 ## Requirements
 
 | Name | Version |
-|------|---------|
+| ---- | ------- |
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.0.0 |
-| <a name="requirement_digitalocean"></a> [digitalocean](#requirement\_digitalocean) | >= 2.0.0 |
+| <a name="requirement_digitalocean"></a> [digitalocean](#requirement\_digitalocean) | ~> 2.0 |
 
 ## Providers
 
 | Name | Version |
-|------|---------|
-| <a name="provider_digitalocean"></a> [digitalocean](#provider\_digitalocean) | >= 2.0.0 |
+| ---- | ------- |
+| <a name="provider_digitalocean"></a> [digitalocean](#provider\_digitalocean) | ~> 2.0 |
 
 ## Modules
 
@@ -19,18 +19,18 @@ No modules.
 ## Resources
 
 | Name | Type |
-|------|------|
+| ---- | ---- |
 | [digitalocean_kubernetes_cluster.k8s](https://registry.terraform.io/providers/digitalocean/digitalocean/latest/docs/resources/kubernetes_cluster) | resource |
 | [digitalocean_kubernetes_node_pool.monitoring](https://registry.terraform.io/providers/digitalocean/digitalocean/latest/docs/resources/kubernetes_node_pool) | resource |
 
 ## Inputs
 
 | Name | Description | Type | Default | Required |
-|------|-------------|------|---------|:--------:|
+| ---- | ----------- | ---- | ------- | :------: |
 | <a name="input_auto_scale"></a> [auto\_scale](#input\_auto\_scale) | Toggle to define default autoscaling behaviour | `bool` | `true` | no |
 | <a name="input_do_token"></a> [do\_token](#input\_do\_token) | tflint-ignore: terraform\_unused\_declarations | `string` | n/a | yes |
 | <a name="input_environment"></a> [environment](#input\_environment) | DigitalOcean env to provision | `string` | n/a | yes |
-| <a name="input_k8s_version"></a> [k8s\_version](#input\_k8s\_version) | value | `string` | `"1.32.10-do.2"` | no |
+| <a name="input_k8s_version"></a> [k8s\_version](#input\_k8s\_version) | DOKS version slug (list with: doctl kubernetes options versions) | `string` | `"1.37.2-do.0"` | no |
 | <a name="input_max_nodes"></a> [max\_nodes](#input\_max\_nodes) | Max nodes in node pool | `number` | `4` | no |
 | <a name="input_min_nodes"></a> [min\_nodes](#input\_min\_nodes) | Min nodes in node pool | `number` | `2` | no |
 | <a name="input_monitoring_auto_scale"></a> [monitoring\_auto\_scale](#input\_monitoring\_auto\_scale) | Enable autoscaling for the monitoring node pool | `bool` | `false` | no |
@@ -48,7 +48,7 @@ No modules.
 ## Outputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | <a name="output_app_node_pool_id"></a> [app\_node\_pool\_id](#output\_app\_node\_pool\_id) | ID of the application node pool |
 | <a name="output_cluster_ca_certificate"></a> [cluster\_ca\_certificate](#output\_cluster\_ca\_certificate) | CA certificate for the Kubernetes cluster |
 | <a name="output_cluster_id"></a> [cluster\_id](#output\_cluster\_id) | ID of the DigitalOcean Kubernetes cluster |
