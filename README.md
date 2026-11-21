@@ -2,7 +2,7 @@
 
 > A production-grade Infrastructure-as-Code project demonstrating advanced DevOps/SRE practices, built with Terraform, Terragrunt, Kubernetes, and modern cloud-native tooling.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Terraform](https://img.shields.io/badge/Terraform-1.17.2-623CE4?logo=terraform)](https://www.terraform.io/)
 [![DigitalOcean](https://img.shields.io/badge/Cloud-DigitalOcean-0080FF?logo=digitalocean)](https://www.digitalocean.com/)
 
@@ -141,7 +141,7 @@ devops-project-infra/
 │   └── dependabot.yml              # Weekly updates for pinned actions & providers
 ├── .pre-commit-config.yaml         # Pre-commit hooks configuration
 ├── CLAUDE.md                       # Project guardrails for Claude Code
-├── LICENSE                         # MIT License
+├── LICENSE                         # GNU GPL v3.0
 ├── Makefile                        # Automation shortcuts for Terragrunt
 ├── README.md                       # This file
 ├── docs/                           # Project documentation
@@ -684,7 +684,7 @@ This is a personal portfolio project, but suggestions and feedback are welcome!
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU General Public License v3.0 (GPL-3.0) - see the [LICENSE](LICENSE) file for details.
 
 ---
 
