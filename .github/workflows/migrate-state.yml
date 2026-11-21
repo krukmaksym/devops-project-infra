@@ -22,10 +22,13 @@ env:
   # Pass Terraform's stdout through untouched (no Terragrunt log prefixes),
   # otherwise `state pull` output is not valid JSON.
   TG_TF_FORWARD_STDOUT: 'true'
+  # argocd stacks are excluded: their state is empty (plans against HCP Terraform
+  # show only creates), and reading it fails because the kubernetes dependency
+  # has no outputs while the clusters are torn down.
   STACKS: >-
-    dev/network dev/kubernetes dev/argocd
-    stage/network stage/kubernetes stage/argocd
-    prod/network prod/kubernetes prod/argocd
+    dev/network dev/kubernetes
+    stage/network stage/kubernetes
+    prod/network prod/kubernetes
 
 jobs:
   migrate:
