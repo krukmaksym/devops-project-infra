@@ -3,7 +3,7 @@ locals {
   # The bucket is created once by hand (with versioning enabled) and is not
   # managed by Terraform. Credentials come from Doppler as AWS_ACCESS_KEY_ID /
   # AWS_SECRET_ACCESS_KEY (a Spaces access key scoped to this bucket only).
-  state_bucket = "devops-project-infra-tfstate"
+  state_bucket = "devops-project-infra-tf-state"
   state_region = "fra1"
 }
 

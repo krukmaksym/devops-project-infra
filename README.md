@@ -212,7 +212,7 @@ doppler --version
    ```
 
 4. **Create the state bucket** (one-time, DigitalOcean console)
-   - Spaces bucket `devops-project-infra-tfstate` in `fra1`, **versioning enabled**
+   - Spaces bucket `devops-project-infra-tf-state` in `fra1`, **versioning enabled**
    - Spaces access key limited to that bucket (read/write); store it in Doppler as above
 
 5. **Configure GitHub Secrets** (for CI/CD)
