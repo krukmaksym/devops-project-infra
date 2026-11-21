@@ -16,7 +16,7 @@
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
 - [Current Implementation Status](#current-implementation-status)
-- [Development Roadmap](https://github.com/krukmaksym/my-devops-project-infra/blob/main/DEVELOPMENT.md)
+- [Development Roadmap](https://github.com/krukmaksym/devops-project-infra/blob/main/DEVELOPMENT.md)
 - [Usage](#usage)
 - [Contributing](#contributing)
 - [License](#license)
@@ -124,7 +124,7 @@ This project serves as a comprehensive demonstration of Senior DevOps and SRE ca
 ## Project Structure
 
 ```
-my-devops-project-infra/
+devops-project-infra/
 ├── .github/
 │   ├── actions/                  # Reusable composite actions
 │   │   ├── detect-infra-changes/ # Smart change detection for matrix strategy
@@ -194,8 +194,8 @@ doppler --version
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/my-devops-project-infra.git
-   cd my-devops-project-infra
+   git clone https://github.com/yourusername/devops-project-infra.git
+   cd devops-project-infra
    ```
 
 2. **Install pre-commit hooks**

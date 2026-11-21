@@ -9,7 +9,7 @@ spec:
   project: default
   sources:
     # Pull values from this Git repo
-    - repoURL: https://github.com/krukmaksym/my-devops-project-infra
+    - repoURL: https://github.com/krukmaksym/devops-project-infra
       targetRevision: main
       ref: values
     # Deploy the Helm chart, referencing values from Git

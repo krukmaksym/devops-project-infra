@@ -2,7 +2,7 @@ locals {
   env = basename(dirname(get_terragrunt_dir()))
 
   # GitOps repository — shared across all environments.
-  gitops_repo_url = "https://github.com/krukmaksym/my-devops-project-infra"
+  gitops_repo_url = "https://github.com/krukmaksym/devops-project-infra"
 
   # Per-environment GitOps revision (branch or tag).
   # dev always tracks main. stage/prod are pinned to a release tag and
