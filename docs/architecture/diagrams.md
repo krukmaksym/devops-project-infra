@@ -13,12 +13,13 @@ graph TD
 
     Admin[DevOps Engineer]:::person
     GitHub[GitHub]:::system
-    TFC[Terraform Cloud]:::system
+    GHA[GitHub Actions]:::system
     Doppler[Doppler]:::system
 
     subgraph DO[DigitalOcean Cloud]
         direction TB
         VPC[VPC - 10.x.0.0/24]:::system
+        Spaces[(Spaces bucket - Terraform state)]:::system
         
         subgraph K8S[Kubernetes Cluster DOKS]
             AppPool[Application Node Pool]:::container
@@ -27,9 +28,10 @@ graph TD
     end
 
     Admin -->|Pushes code| GitHub
-    GitHub -->|Triggers| TFC
-    TFC -->|Provisions| VPC
-    TFC -->|Fetches secrets| Doppler
+    GitHub -->|Triggers| GHA
+    GHA -->|Provisions| VPC
+    GHA -->|Fetches secrets| Doppler
+    GHA -->|Reads/writes state| Spaces
     K8S -.->|Resides in| VPC
 
     %% Styling for subgraph (simulating Boundary)

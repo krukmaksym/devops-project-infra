@@ -1,5 +1,6 @@
 # ====== CONFIG ======
-DOPPLER=doppler run --name-transformer tf-var -- sh -c
+# Secrets from Doppler (see scripts/doppler-tf.sh for why a wrapper is needed)
+DOPPLER=./scripts/doppler-tf.sh sh -c
 LIVE_DIR=infra/terraform/live
 
 # ====== HELPERS ======

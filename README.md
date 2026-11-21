@@ -87,10 +87,10 @@ This project serves as a comprehensive demonstration of Senior DevOps and SRE ca
 
           │                                    │
           ▼                                    ▼
-    ┌──────────┐                        ┌──────────┐
-    │ Doppler  │                        │Terraform │
-    │ Secrets  │                        │  Cloud   │
-    └──────────┘                        └──────────┘
+    ┌──────────┐                        ┌──────────────┐
+    │ Doppler  │                        │  DO Spaces   │
+    │ Secrets  │                        │ (TF state)   │
+    └──────────┘                        └──────────────┘
 ```
 
 ---
@@ -101,11 +101,11 @@ This project serves as a comprehensive demonstration of Senior DevOps and SRE ca
 - **IaC**: Terraform 1.14.0 + Terragrunt 0.93.11 (DRY configuration)
 - **Cloud Provider**: DigitalOcean
 - **Container Orchestration**: Kubernetes (DOKS) 1.35.1
-- **State Management**: Terraform Cloud
+- **State Management**: DigitalOcean Spaces (S3 backend, native lockfile locking)
 - **Secrets Management**: Doppler
 
 ### DevOps Tools (Implemented)
-- **CI/CD**: GitHub Actions (PR validation, deployment, destroy, AI code review via Claude)
+- **CI/CD**: GitHub Actions (PR validation, deployment, destroy)
 - **GitOps**: ArgoCD (bootstrapped via Terraform, GitHub OAuth SSO prepared)
 - **Observability**: VictoriaMetrics + Grafana (deployed via Helm)
 - **Pre-commit**: terraform-fmt, terragrunt-fmt, tflint, tfsec, trivy, checkov, terraform-docs
@@ -133,9 +133,8 @@ devops-project-infra/
 │   └── workflows/
 │       ├── terraform-pr.yml      # PR validation (format, validate, plan, security)
 │       ├── terraform-deploy.yml  # Deployment workflow (manual only)
-│       ├── destroy-infra.yml     # Infrastructure destroy (with safeguards)
-│       └── claude-review.yml     # AI-powered code review (on @claude comment)
-├── CLAUDE.md                    # Claude code review instructions & guardrails
+│       └── destroy-infra.yml     # Infrastructure destroy (with safeguards)
+├── CLAUDE.md                    # Project guardrails for Claude Code
 ├── .pre-commit-config.yaml      # Pre-commit hooks configuration
 ├── .github/dependabot.yml       # Weekly updates for pinned actions & providers
 ├── docs/                        # Project documentation
@@ -207,19 +206,18 @@ doppler --version
    doppler login
    doppler setup
    # Add required secrets (uppercase in Doppler UI):
-   # - DO_TOKEN (DigitalOcean API token - will become TF_VAR_do_token)
+   # - DO_TOKEN (DigitalOcean API token; becomes TF_VAR_do_token)
+   # - AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (Spaces key for the state bucket)
    ```
 
-4. **Configure Terraform Cloud**
-   - Create organization: `my-devops-project`
-   - Workspaces will be auto-created by Terragrunt
+4. **Create the state bucket** (one-time, DigitalOcean console)
+   - Spaces bucket `devops-project-infra-tf-state` in `fra1`, **versioning enabled**
+   - Spaces access key limited to that bucket (read/write); store it in Doppler as above
 
 5. **Configure GitHub Secrets** (for CI/CD)
    ```bash
    # Repository secrets (Settings > Secrets and variables > Actions):
    # - DOPPLER_TOKEN: Your Doppler service token
-   # - TF_CLOUD_TOKEN: Your Terraform Cloud API token
-   # - ANTHROPIC_API_KEY: Anthropic API key (for @claude PR reviews)
    ```
 
 6. **Initialize and plan infrastructure**
@@ -246,8 +244,8 @@ doppler --version
 | **ArgoCD module** | GitOps controller bootstrapped via Terraform Helm, ClusterIP service (port-forward access), GitHub OAuth SSO prepared (Dex), team-scoped RBAC |
 | **Terragrunt DRY config** | Centralized `_env/` configs, per-module provider generation, mock outputs for CI |
 | **Doppler integration** | Secrets injected as `TF_VAR_*` via Doppler CLI |
-| **Remote state** | Terraform Cloud backend with per-workspace isolation |
-| **CI/CD Pipeline** | 4 GitHub Actions workflows: PR validation, deployment, destroy, AI code review (Claude) |
+| **Remote state** | DigitalOcean Spaces S3 backend, one state file per stack, native lockfile locking, bucket versioning |
+| **CI/CD Pipeline** | 3 GitHub Actions workflows: PR validation, deployment, destroy |
 | **Deployment gates** | Manual-only deploys; GitHub Environments with required reviewers on `prod` |
 | **Supply-chain hardening** | SHA-pinned actions, Dependabot, committed provider lock files |
 | **Pre-commit hooks** | terraform-fmt, terragrunt-fmt, tflint, tfsec, trivy, checkov, terraform-docs |
@@ -273,7 +271,7 @@ doppler --version
 
 ### GitHub Actions Workflows
 
-The project includes four GitHub Actions workflows for comprehensive infrastructure management:
+The project includes three GitHub Actions workflows for comprehensive infrastructure management:
 
 #### 1. PR Validation Workflow ([`terraform-pr.yml`](.github/workflows/terraform-pr.yml))
 
@@ -312,17 +310,6 @@ Manual workflow for safely destroying infrastructure with safeguards.
 - Smart network exclusion (prevents "Cannot delete default VPC" error)
 - Strict dependency handling with `--queue-strict-include`
 
-#### 4. Claude Code Review Workflow ([`claude-review.yml`](.github/workflows/claude-review.yml))
-
-On-demand AI code review triggered by commenting `@claude` on an open pull request. Uses the [anthropics/claude-code-action](https://github.com/anthropics/claude-code-action) action with project-specific review instructions defined in [`CLAUDE.md`](CLAUDE.md).
-
-**Features:**
-- Triggered by `@claude` comment on any open PR (`issue_comment` event)
-- Security gate blocks execution for forked PRs to protect secrets
-- Reviews the PR diff for security, Terraform/Terragrunt best practices, state management, cost impact, and breaking changes
-- Posts review as a sticky PR comment with severity levels (critical, warning, suggestion)
-- Uses `ANTHROPIC_API_KEY` secret with scoped tool access (`Bash(gh *)`, `Read`, `Glob`, `Grep`)
-
 #### Change Detection Logic
 
 - **Module changes** (e.g., `modules/network/main.tf`): Plans ALL environments (dev, stage, prod)
@@ -340,7 +327,6 @@ On-demand AI code review triggered by commenting `@claude` on an open pull reque
 - Executes Terragrunt commands with Doppler secrets injection
 - Handles exit codes properly for workflow failure detection
 - Captures output for PR comments
-- Uses `tf-var` name transformer for Terraform variables
 - TF Cloud token passed directly to avoid transformation
 
 #### Workflow Security
@@ -353,9 +339,11 @@ On-demand AI code review triggered by commenting `@claude` on an open pull reque
 
 #### Secrets Management
 
-The workflow uses a hybrid approach:
-- **Doppler**: Terraform input variables (e.g., `DO_TOKEN` → `TF_VAR_do_token`)
-- **GitHub Secrets**: Terraform Cloud token (`TF_CLOUD_TOKEN` → `TF_TOKEN_app_terraform_io`)
+All secrets live in Doppler; GitHub only stores `DOPPLER_TOKEN`. Terragrunt runs through [`scripts/doppler-tf.sh`](scripts/doppler-tf.sh):
+- **Terraform inputs**: Doppler names are always uppercase, so `--name-transformer tf-var` renames them, e.g. `DO_TOKEN` → `TF_VAR_do_token` → `var.do_token`
+- **Backend credentials**: the Spaces key (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` in Doppler) gets renamed too, so the script maps it back to the `AWS_*` names the S3 backend reads
+
+Deploy and destroy share a `terraform-state` concurrency group, so state-changing runs never overlap.
 
 ---
 
@@ -368,9 +356,9 @@ The workflow uses a hybrid approach:
 - [x] Kubernetes module (DOKS with app + monitoring node pools, taints, auto-scaling)
 - [x] Monitoring module (VictoriaMetrics + Grafana via Helm)
 - [x] Doppler secrets management integration
-- [x] Terraform Cloud remote state
+- [x] Remote state (Terraform Cloud, migrated to DigitalOcean Spaces)
 - [x] Pre-commit hooks (fmt, tflint, tfsec, trivy, checkov, terraform-docs)
-- [x] CI/CD pipelines (PR validation, deployment, destroy, AI code review)
+- [x] CI/CD pipelines (PR validation, deployment, destroy)
 - [x] Security scanning in CI (Trivy, Checkov, tfsec)
 - [x] CI supply-chain hardening (SHA-pinned actions, Dependabot, provider lock files)
 - [x] Approval-gated deploy/destroy via GitHub Environments
@@ -454,21 +442,24 @@ make destroy-all   # Destroy all environments (dangerous!)
 ### Direct Terragrunt Commands
 
 ```bash
+# Doppler wrapper (works from any directory in the repo)
+TG="$(git rev-parse --show-toplevel)/scripts/doppler-tf.sh"
+
 # Navigate to specific environment
 cd infra/terraform/live/dev/network
 
 # Initialize
-doppler run --name-transformer tf-var -- terragrunt init
+"$TG" terragrunt init
 
 # Plan
-doppler run --name-transformer tf-var -- terragrunt plan
+"$TG" terragrunt plan
 
 # Apply
-doppler run --name-transformer tf-var -- terragrunt apply
+"$TG" terragrunt apply
 
 # Run all modules in environment
 cd infra/terraform/live/dev
-doppler run --name-transformer tf-var -- terragrunt run-all apply
+"$TG" terragrunt run-all apply
 ```
 
 ### Accessing Kubernetes Clusters
@@ -530,7 +521,7 @@ Each environment tracks its own Git revision, controlled via `infra/terraform/li
 4. **Apply ArgoCD via Terragrunt** (or let the CI pipeline pick it up):
    ```bash
    cd infra/terraform/live/stage/argocd
-   doppler run --name-transformer tf-var -- terragrunt apply
+   "$(git rev-parse --show-toplevel)/scripts/doppler-tf.sh" terragrunt apply
    ```
    Terraform updates the `argocd-apps` Helm release, which patches the root `Application`'s `targetRevision`. ArgoCD detects the change and syncs the stage cluster to the new tag.
 
@@ -658,7 +649,7 @@ This project showcases proficiency in:
 - **GitOps**: ArgoCD bootstrapped via Terraform, phased rollout strategy
 - **Secrets Management**: Doppler integration, `set_sensitive` for Helm secrets
 - **Observability**: VictoriaMetrics + Grafana monitoring stack
-- **CI/CD**: GitHub Actions with smart change detection, matrix strategy, security scanning, environment approvals, supply-chain hardening, AI code review
+- **CI/CD**: GitHub Actions with smart change detection, matrix strategy, security scanning, environment approvals, supply-chain hardening
 - **Security**: Pre-commit hooks, CI security scanning (Trivy, Checkov, tfsec), RBAC, sensitive value handling
 - **SRE Practices**: Atomic rollbacks, node pool isolation, auto-scaling, cost estimation
 
@@ -709,7 +700,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 | Cloud Regions | 1 (fra1) |
 | Kubernetes Version | 1.35.1-do.0 |
 | Total Nodes (dev) | 3-5 (auto-scaled: 2-4 app + 1 monitoring) |
-| GitHub Actions Workflows | 4 (PR validation, deployment, destroy, Claude review) |
+| GitHub Actions Workflows | 3 (PR validation, deployment, destroy) |
 
 ---
 
