@@ -8,15 +8,17 @@ runs:
   using: "composite"
   steps:
     - name: Setup Infracost
-      uses: infracost/actions/setup@v3
+      uses: infracost/actions/setup@e9d6e6cd65e168e76b0de50ff9957d2fe8bb1832 # v3.0.1
       with:
         api-key: ${{ inputs.api_key }}
 
     - name: Check Infracost API Key
       id: check_key
       shell: bash
+      env:
+        INFRACOST_API_KEY: ${{ inputs.api_key }}
       run: |
-        if [ -z "${{ inputs.api_key }}" ]; then
+        if [ -z "$INFRACOST_API_KEY" ]; then
           echo "⚠️ INFRACOST_API_KEY not found. Skipping cost estimation."
           echo "has_key=false" >> $GITHUB_OUTPUT
         else
@@ -35,7 +37,9 @@ runs:
     - name: Post Infracost comment
       if: steps.check_key.outputs.has_key == 'true'
       shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
       run: |
         infracost comment github --path /tmp/infracost.json \
           --behavior update \
-          --github-token ${{ github.token }}
+          --github-token "$GITHUB_TOKEN"

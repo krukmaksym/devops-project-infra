@@ -16,7 +16,7 @@
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
 - [Current Implementation Status](#current-implementation-status)
-- [Development Roadmap](https://github.com/krukmaksym/my-devops-project-infra/blob/main/DEVELOPMENT.md)
+- [Development Roadmap](https://github.com/krukmaksym/devops-project-infra/blob/main/DEVELOPMENT.md)
 - [Usage](#usage)
 - [Contributing](#contributing)
 - [License](#license)
@@ -79,8 +79,8 @@ This project serves as a comprehensive demonstration of Senior DevOps and SRE ca
 │  │  └──────────────┼─────────────────────────────────┘   │    │
 │  │                 │                                     │    │
 │  │  ┌──────────────▼────────┐                            │    │
-│  │  │  DO Load Balancer     │                            │    │
-│  │  │  (ArgoCD endpoint)    │                            │    │
+│  │  │  ArgoCD Service       │                            │    │
+│  │  │  ClusterIP (port-fwd) │                            │    │
 │  │  └───────────────────────┘                            │    │
 │  └───────────────────────────────────────────────────────┘    │
 └───────────────────────────────────────────────────────────────┘
@@ -124,7 +124,7 @@ This project serves as a comprehensive demonstration of Senior DevOps and SRE ca
 ## Project Structure
 
 ```
-my-devops-project-infra/
+devops-project-infra/
 ├── .github/
 │   ├── actions/                  # Reusable composite actions
 │   │   ├── detect-infra-changes/ # Smart change detection for matrix strategy
@@ -132,45 +132,44 @@ my-devops-project-infra/
 │   │   └── terragrunt-exec/      # Execute Terragrunt with Doppler secrets
 │   └── workflows/
 │       ├── terraform-pr.yml      # PR validation (format, validate, plan, security)
-│       ├── terraform-deploy.yml  # Deployment workflow (manual + auto on merge)
+│       ├── terraform-deploy.yml  # Deployment workflow (manual only)
 │       ├── destroy-infra.yml     # Infrastructure destroy (with safeguards)
 │       └── claude-review.yml     # AI-powered code review (on @claude comment)
 ├── CLAUDE.md                    # Claude code review instructions & guardrails
 ├── .pre-commit-config.yaml      # Pre-commit hooks configuration
+├── .github/dependabot.yml       # Weekly updates for pinned actions & providers
 ├── docs/                        # Project documentation
 │   ├── architecture/            # Architecture diagrams
 │   └── troubleshooting.md       # Troubleshooting guide
 ├── Makefile                     # Automation shortcuts for Terragrunt
 ├── README.md                    # This file
 ├── LICENSE                      # MIT License
+├── gitops/                      # ArgoCD-managed manifests (App-of-Apps)
+│   ├── apps/{dev,stage,prod}/   # Application manifests per environment
+│   └── monitoring/              # VictoriaMetrics + Grafana Helm values
 └── infra/
     └── terraform/
         ├── modules/              # Reusable Terraform modules
         │   ├── network/          # VPC provisioning
         │   ├── kubernetes/       # DOKS cluster + node pools
-        │   ├── monitoring/       # VictoriaMetrics observability stack
         │   └── argocd/           # ArgoCD GitOps controller
         └── live/                 # Environment-specific configurations
             ├── root.hcl          # Global Terragrunt config (TF Cloud backend)
             ├── _env/             # Shared environment variable definitions
             │   ├── network.hcl   # Network configs per env
             │   ├── kubernetes.hcl # K8s configs per env
-            │   ├── monitoring.hcl # Monitoring configs per env
             │   └── argocd.hcl    # ArgoCD configs per env (phased rollout)
-            ├── dev/              # Development environment
+            ├── dev/              # Development environment (each stack has .terraform.lock.hcl)
             │   ├── network/
             │   ├── kubernetes/
-            │   ├── monitoring/
             │   └── argocd/
             ├── stage/            # Staging environment
             │   ├── network/
             │   ├── kubernetes/
-            │   ├── monitoring/
             │   └── argocd/
             └── prod/             # Production environment
                 ├── network/
                 ├── kubernetes/
-                ├── monitoring/
                 └── argocd/
 ```
 
@@ -194,8 +193,8 @@ doppler --version
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/my-devops-project-infra.git
-   cd my-devops-project-infra
+   git clone https://github.com/yourusername/devops-project-infra.git
+   cd devops-project-infra
    ```
 
 2. **Install pre-commit hooks**
@@ -243,24 +242,26 @@ doppler --version
 | **Multi-environment setup** | dev, stage, prod with graduated node sizing |
 | **Network module** | VPC provisioning with environment-specific CIDR blocks |
 | **Kubernetes module** | DOKS 1.35 cluster with app + monitoring node pools, auto-scaling, monitoring pool taint |
-| **Monitoring module** | VictoriaMetrics + Grafana deployed via Helm with tolerations, persistent storage |
-| **ArgoCD module** | GitOps controller bootstrapped via Terraform Helm, DO LoadBalancer, GitHub OAuth SSO prepared (Dex), team-scoped RBAC |
+| **Monitoring (GitOps)** | VictoriaMetrics + Grafana deployed by ArgoCD from `gitops/`, with tolerations and persistent storage |
+| **ArgoCD module** | GitOps controller bootstrapped via Terraform Helm, ClusterIP service (port-forward access), GitHub OAuth SSO prepared (Dex), team-scoped RBAC |
 | **Terragrunt DRY config** | Centralized `_env/` configs, per-module provider generation, mock outputs for CI |
 | **Doppler integration** | Secrets injected as `TF_VAR_*` via Doppler CLI |
 | **Remote state** | Terraform Cloud backend with per-workspace isolation |
 | **CI/CD Pipeline** | 4 GitHub Actions workflows: PR validation, deployment, destroy, AI code review (Claude) |
+| **Deployment gates** | Manual-only deploys; GitHub Environments with required reviewers on `prod` |
+| **Supply-chain hardening** | SHA-pinned actions, Dependabot, committed provider lock files |
 | **Pre-commit hooks** | terraform-fmt, terragrunt-fmt, tflint, tfsec, trivy, checkov, terraform-docs |
 | **Security scanning** | Trivy + Checkov + tfsec in CI pipeline, Infracost cost estimation |
 | **Auto-scaling** | Node pool auto-scaling (2-10 nodes depending on env) |
-| **Lifecycle protection** | `prevent_destroy` on critical resources, `create_before_destroy` on node pools |
+| **Lifecycle protection** | `create_before_destroy` on the monitoring node pool |
 
 ### 🚧 In Progress / Next Steps
 
 | Component | Priority | Description |
 |-----------|----------|-------------|
-| **ArgoCD HTTPS** | High | Enable TLS on ArgoCD LoadBalancer (cert-manager or DO-managed certs) |
+| **ArgoCD HTTPS** | High | Expose ArgoCD via LoadBalancer with TLS and `lb_source_ranges` (currently ClusterIP) |
 | **ArgoCD OAuth SSO** | High | Configure GitHub OAuth App, connect Dex, disable admin account |
-| **Migrate monitoring to ArgoCD** | Medium | Move VictoriaMetrics from Terraform Helm to ArgoCD Application |
+| **Lifecycle protection** | Medium | `prevent_destroy` on VPCs and clusters |
 | **Grafana dashboards** | Medium | Custom dashboards for cluster and application metrics |
 | **Loki logging** | Medium | Centralized log aggregation |
 | **Progressive delivery** | Low | Argo Rollouts for canary/blue-green deployments |
@@ -272,7 +273,7 @@ doppler --version
 
 ### GitHub Actions Workflows
 
-The project includes five GitHub Actions workflows for comprehensive infrastructure management:
+The project includes four GitHub Actions workflows for comprehensive infrastructure management:
 
 #### 1. PR Validation Workflow ([`terraform-pr.yml`](.github/workflows/terraform-pr.yml))
 
@@ -289,12 +290,13 @@ Runs on every pull request to `main` for validation and planning.
 
 #### 2. Deployment Workflow ([`terraform-deploy.yml`](.github/workflows/terraform-deploy.yml))
 
-Automated deployment workflow triggered on push to `main` or manual workflow dispatch.
+Manual deployment workflow (`workflow_dispatch` only). Merges to `main` do not auto-apply, so torn-down environments stay down until deployed deliberately.
 
 **Features:**
 - Manual deployment with environment selection (dev/stage/prod)
 - Resource-specific deployment (network, kubernetes, monitoring, argocd, or all)
 - Branch constraints (production deployments only from `main`)
+- GitHub Environment gate (`dev`/`stage`/`prod`); `prod` requires reviewer approval
 - Doppler secrets integration
 - Support for both selective and bulk deployments
 
@@ -304,6 +306,7 @@ Manual workflow for safely destroying infrastructure with safeguards.
 
 **Features:**
 - Requires "DESTROY" confirmation text to execute
+- GitHub Environment gate; destroying `prod` or `all` requires reviewer approval
 - Environment selection (dev/stage/prod/all)
 - Resource-specific destruction
 - Smart network exclusion (prevents "Cannot delete default VPC" error)
@@ -330,8 +333,8 @@ On-demand AI code review triggered by commenting `@claude` on an open pull reque
 
 **[setup-terragrunt](.github/actions/setup-terragrunt/action.yml)**
 - Installs Terraform 1.14.0
-- Installs Terragrunt 0.93.11
-- Installs Doppler CLI
+- Installs Terragrunt 0.93.11 (SHA-pinned action, no unverified binary download)
+- Installs Doppler CLI via the official `dopplerhq/cli-action`
 
 **[terragrunt-exec](.github/actions/terragrunt-exec/action.yml)**
 - Executes Terragrunt commands with Doppler secrets injection
@@ -339,6 +342,14 @@ On-demand AI code review triggered by commenting `@claude` on an open pull reque
 - Captures output for PR comments
 - Uses `tf-var` name transformer for Terraform variables
 - TF Cloud token passed directly to avoid transformation
+
+#### Workflow Security
+
+- **Pinned dependencies**: every third-party action is pinned to a full commit SHA; Dependabot proposes weekly updates
+- **No script injection**: PR-controlled values (plan output, filenames, inputs) and secrets reach scripts via `env:`, never `${{ }}` interpolation
+- **Safe step outputs**: `$GITHUB_OUTPUT` heredocs use random delimiters
+- **Least privilege**: secrets are scoped to the steps that need them; SARIF upload has only `security-events: write`
+- **Fork protection**: workflows with secrets skip PRs from forks
 
 #### Secrets Management
 
@@ -361,13 +372,15 @@ The workflow uses a hybrid approach:
 - [x] Pre-commit hooks (fmt, tflint, tfsec, trivy, checkov, terraform-docs)
 - [x] CI/CD pipelines (PR validation, deployment, destroy, AI code review)
 - [x] Security scanning in CI (Trivy, Checkov, tfsec)
+- [x] CI supply-chain hardening (SHA-pinned actions, Dependabot, provider lock files)
+- [x] Approval-gated deploy/destroy via GitHub Environments
 - [x] Cost estimation (Infracost)
 - [x] Architecture documentation and troubleshooting guide
 
 ### Phase 2: GitOps with ArgoCD (Complete)
 
 - [x] Bootstrap ArgoCD via Terraform Helm chart
-- [x] DigitalOcean LoadBalancer provisioning for ArgoCD UI
+- [x] ArgoCD UI via `kubectl port-forward` (ClusterIP; LoadBalancer opt-in via `server_service_type`)
 - [x] GitHub OAuth SSO prepared (Dex connector, team-scoped RBAC)
 - [x] Secure secret handling (`set_sensitive` for OAuth client secret)
 - [x] Migrate monitoring stack from Terraform Helm to ArgoCD Application
@@ -375,7 +388,7 @@ The workflow uses a hybrid approach:
 
 ### Phase 3: ArgoCD Hardening & Observability (In Progress)
 
-- [ ] Enable HTTPS on ArgoCD LB (cert-manager or DO-managed TLS)
+- [ ] Expose ArgoCD via LoadBalancer with HTTPS and source-range restrictions
 - [ ] Configure GitHub OAuth App and activate Dex SSO
 - [ ] Custom Grafana dashboards for cluster and application metrics
 - [ ] Loki for centralized log aggregation
@@ -480,7 +493,7 @@ kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.pas
 
 # Open http://localhost:8080 and login with user "admin"
 
-# Get the LoadBalancer external IP (reserved for future HTTPS setup)
+# Phase 2 only (server_service_type = "LoadBalancer"): get the external IP
 kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
 ```
 
@@ -574,38 +587,21 @@ Provisions a DOKS cluster with separate node pools for applications and monitori
 
 **Outputs**: Cluster ID, endpoints, kubeconfig (sensitive)
 
-### Monitoring Module
-
-**Location**: [infra/terraform/modules/monitoring/](infra/terraform/modules/monitoring/)
-
-Deploys VictoriaMetrics observability stack to Kubernetes clusters.
-
-**Features**:
-- VictoriaMetrics time-series database
-- Grafana for visualization
-- Kubernetes metrics collection
-- Customizable retention period
-- Helm-based deployment with atomic rollback
-
-**Inputs**: See [variables.tf](infra/terraform/modules/monitoring/variables.tf)
-
-**Outputs**: Namespace name, Helm release status
-
 ### ArgoCD Module
 
 **Location**: [infra/terraform/modules/argocd/](infra/terraform/modules/argocd/)
 
-Bootstraps ArgoCD as the GitOps controller via Helm chart, with a LoadBalancer for UI access.
+Bootstraps ArgoCD as the GitOps controller via Helm chart. The UI is reached with `kubectl port-forward` (ClusterIP service) until HTTPS and SSO are in place.
 
 **Features**:
 - ArgoCD deployed via `argo-cd` Helm chart (pinned version)
-- DigitalOcean LoadBalancer for external access
+- `server_service_type` variable: `ClusterIP` by default, `LoadBalancer` (with `lb_source_ranges`) as an opt-in
 - Redis auth secret pre-created via Terraform (`redisSecretInit` job disabled)
 - GitHub OAuth SSO via Dex (conditionally enabled)
 - Team-scoped RBAC (`github_admin_team` variable)
 - OAuth client secret kept out of Helm values via `set_sensitive`
 - Atomic rollback on failed upgrades
-- Phased rollout: LB provisioned first, HTTPS and OAuth configured later
+- Phased rollout: port-forward access first, then LoadBalancer with HTTPS and OAuth
 
 **Inputs**: See [variables.tf](infra/terraform/modules/argocd/variables.tf)
 
@@ -625,7 +621,10 @@ Bootstraps ArgoCD as the GitOps controller via Helm chart, with a LoadBalancer f
 ### Security
 - ✅ Secrets managed via Doppler (not in code)
 - ✅ Sensitive Terraform outputs and `set_sensitive` for Helm secrets
-- ✅ Lifecycle protection on critical resources
+- ✅ SHA-pinned CI actions, Dependabot and provider lock files
+- ✅ Approval-gated production deploys and destroys
+- ✅ ArgoCD not exposed publicly until TLS and SSO are configured
+- 🚧 `prevent_destroy` on critical resources (planned)
 - ✅ Pre-commit hooks (tflint, tfsec, trivy, checkov)
 - ✅ Security scanning in CI pipeline (Trivy, Checkov, tfsec)
 - ✅ ArgoCD RBAC with team-scoped admin, default readonly
@@ -634,7 +633,7 @@ Bootstraps ArgoCD as the GitOps controller via Helm chart, with a LoadBalancer f
 
 ### Operational Excellence
 - ✅ Multi-environment strategy with graduated sizing
-- ✅ Automated deployments via Makefile and CI/CD
+- ✅ Deliberate, approval-gated deployments via Makefile and CI/CD
 - ✅ GitOps foundation with ArgoCD
 - ✅ Monitoring stack (VictoriaMetrics + Grafana)
 - ✅ Node pool isolation (monitoring taint + nodeSelector, untainted app pool for system pods)
@@ -659,7 +658,7 @@ This project showcases proficiency in:
 - **GitOps**: ArgoCD bootstrapped via Terraform, phased rollout strategy
 - **Secrets Management**: Doppler integration, `set_sensitive` for Helm secrets
 - **Observability**: VictoriaMetrics + Grafana monitoring stack
-- **CI/CD**: GitHub Actions with smart change detection, matrix strategy, security scanning, AI code review
+- **CI/CD**: GitHub Actions with smart change detection, matrix strategy, security scanning, environment approvals, supply-chain hardening, AI code review
 - **Security**: Pre-commit hooks, CI security scanning (Trivy, Checkov, tfsec), RBAC, sensitive value handling
 - **SRE Practices**: Atomic rollbacks, node pool isolation, auto-scaling, cost estimation
 

@@ -18,26 +18,17 @@ runs:
   steps:
     # Install Terraform using official HashiCorp action
     - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
+      uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
       with:
         terraform_version: ${{ inputs.terraform-version }}
         terraform_wrapper: false  # Disable wrapper to get raw terraform output
 
-    # Download and install Terragrunt binary
-    - name: Install Terragrunt
-      shell: bash
-      run: |
-        echo "📦 Installing Terragrunt ${{ inputs.terragrunt-version }}..."
-        wget -q https://github.com/gruntwork-io/terragrunt/releases/download/v${{ inputs.terragrunt-version }}/terragrunt_linux_amd64
-        chmod +x terragrunt_linux_amd64
-        sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
-        terragrunt --version
+    # Install Terragrunt via a SHA-pinned action (no unverified binary download)
+    - name: Setup Terragrunt
+      uses: autero1/action-terragrunt@aefb0a43c4f5503a91fefb307745c4d51c26ed0e # v3.0.2
+      with:
+        terragrunt-version: ${{ inputs.terragrunt-version }}
 
-    # Install Doppler CLI for secrets/environment variable management
-    # Using sudo to allow system-wide installation with proper permissions
+    # Install Doppler CLI via the official, SHA-pinned action (no `curl | sudo sh`)
     - name: Install Doppler CLI
-      shell: bash
-      run: |
-        echo "🔐 Installing Doppler CLI..."
-        curl -Ls https://cli.doppler.com/install.sh | sudo sh
-        doppler --version
+      uses: dopplerhq/cli-action@4819d808ab99e5cde19a0637a16536a4038fad73 # v4.0.1

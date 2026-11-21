@@ -2,7 +2,7 @@ locals {
   env = basename(dirname(get_terragrunt_dir()))
 
   # GitOps repository — shared across all environments.
-  gitops_repo_url = "https://github.com/krukmaksym/my-devops-project-infra"
+  gitops_repo_url = "https://github.com/krukmaksym/devops-project-infra"
 
   # Per-environment GitOps revision (branch or tag).
   # dev always tracks main. stage/prod are pinned to a release tag and
@@ -18,12 +18,13 @@ locals {
   gitops_revision_stage = "main" # TODO: pin to a release tag once stage cluster is provisioned
   gitops_revision_prod  = "main" # TODO: pin to a release tag once prod cluster is provisioned
 
-  # Phase 1 (this PR): Bootstrap ArgoCD + provision DigitalOcean LoadBalancer.
-  #   - LB is created to reserve an external IP for future use.
-  #   - ArgoCD is accessed via `kubectl port-forward svc/argocd-server -n argocd 8080:443`.
-  #   - No loadBalancerSourceRanges set (lb_source_ranges = []).
+  # Phase 1: Bootstrap ArgoCD with a ClusterIP service (no public endpoint).
+  #   - ArgoCD is accessed via `kubectl port-forward svc/argocd-server -n argocd 8080:80`.
+  #   - A public LB is NOT created: with server_insecure + admin_enabled it would
+  #     expose the admin login over plain HTTP to the whole internet.
   #
-  # Phase 2: Enable HTTPS on the LB (TLS termination or cert-manager).
+  # Phase 2: Set server_service_type = "LoadBalancer", restrict lb_source_ranges,
+  #   and enable HTTPS on the LB (TLS termination or cert-manager).
   #
   # Phase 3: Configure GitHub OAuth SSO via Dex:
   #   1. Create GitHub OAuth App with callback: https://<LB-IP>/api/dex/callback
@@ -40,7 +41,8 @@ locals {
       server_insecure            = true # Phase 1 only — access via port-forward
       admin_enabled              = true # Phase 1 only — disable once OAuth is configured
       replace_on_failure         = true
-      lb_source_ranges           = [] # Phase 1 — no IP restriction, secured via port-forward
+      server_service_type        = "ClusterIP" # Phase 1 — port-forward only
+      lb_source_ranges           = []
       argocd_url                 = ""
       github_oauth_client_id     = ""
       github_oauth_client_secret = ""
@@ -57,6 +59,7 @@ locals {
       server_insecure            = false
       admin_enabled              = false
       replace_on_failure         = false
+      server_service_type        = "ClusterIP"
       lb_source_ranges           = []
       argocd_url                 = ""
       github_oauth_client_id     = ""
@@ -74,6 +77,7 @@ locals {
       server_insecure            = false
       admin_enabled              = false
       replace_on_failure         = false
+      server_service_type        = "ClusterIP"
       lb_source_ranges           = []
       argocd_url                 = ""
       github_oauth_client_id     = ""

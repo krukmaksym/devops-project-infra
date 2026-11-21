@@ -16,7 +16,7 @@ server:
   nodeSelector:
     service: monitoring
   service:
-    type: LoadBalancer
+    type: ${server_service_type}
     annotations:
       service.beta.kubernetes.io/do-loadbalancer-name: "argocd-${environment}"
 %{ if length(lb_source_ranges) > 0 ~}

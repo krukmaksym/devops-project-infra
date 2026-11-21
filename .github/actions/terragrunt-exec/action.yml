@@ -53,9 +53,14 @@ runs:
         echo "$output"
 
         # Save output as multiline string for use in other steps
-        echo "output<<EOF" >> $GITHUB_OUTPUT
-        echo "$output" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
+        # Random delimiter: a literal "EOF" line in the output can't terminate
+        # the value early and inject extra step outputs
+        delim="EOF_$(openssl rand -hex 16)"
+        {
+          echo "output<<${delim}"
+          echo "$output"
+          echo "${delim}"
+        } >> "$GITHUB_OUTPUT"
 
         # Propagate the original exit code to fail the workflow step if terragrunt failed
         exit $exit_code

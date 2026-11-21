@@ -50,7 +50,7 @@ jobs:
       has_changes: ${{ steps.set-matrix.outputs.has_changes }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0  # Full history needed for PR diff
 
@@ -70,10 +70,10 @@ jobs:
     if: needs.security-gate.outputs.should_run == 'true'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3.1.2
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
@@ -88,13 +88,16 @@ jobs:
     name: Checkov Security Scan
     runs-on: ubuntu-latest
     needs: security-gate
+    permissions:
+      contents: read
+      security-events: write  # required by upload-sarif
     if: needs.security-gate.outputs.should_run == 'true'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Run Checkov
-        uses: bridgecrewio/checkov-action@master
+        uses: bridgecrewio/checkov-action@b17b606d6ec72bb8ba5721ad5b7e340b80a9fc39 # v12.3142.0
         with:
           directory: infra/terraform
           framework: terraform
@@ -104,7 +107,7 @@ jobs:
 
       - name: Upload SARIF file
         if: success() || failure()
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
         with:
           sarif_file: results.sarif
           category: checkov
@@ -117,10 +120,10 @@ jobs:
     if: needs.security-gate.outputs.should_run == 'true'
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: 'config'
           scan-ref: 'infra/terraform'
@@ -142,7 +145,7 @@ jobs:
       INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Run Infracost Estimate
         uses: ./.github/actions/infracost-estimate
@@ -161,7 +164,7 @@ jobs:
       fail-fast: false  # Continue validating other envs even if one fails
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # Install Terraform, Terragrunt, and Doppler CLI
       - name: Setup Terragrunt Environment
@@ -200,7 +203,7 @@ jobs:
       fail-fast: false  # Continue planning other envs even if one fails
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # Install Terraform, Terragrunt, and Doppler CLI
       - name: Setup Terragrunt Environment
@@ -230,23 +233,27 @@ jobs:
           extra-args: -no-color -out=tfplan
 
       # Extract summary from plan output for PR comment
+      # Plan output is passed via env, never interpolated into the script:
+      # a single quote in the plan previously broke out of the shell string.
       - name: Extract Plan Summary
         id: summary
+        env:
+          PLAN_RAW: ${{ steps.plan.outputs.output }}
         run: |
-          plan_output='${{ steps.plan.outputs.output }}'
-          plan_summary=$(echo "$plan_output" | grep -E "Plan:|No changes" | tail -1 || echo "Plan completed")
-
-          echo "PLAN_SUMMARY<<EOF" >> $GITHUB_OUTPUT
-          echo "$plan_summary" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-          echo "PLAN_OUTPUT<<EOF" >> $GITHUB_OUTPUT
-          echo "$plan_output" | tail -100 >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          plan_summary=$(printf '%s\n' "$PLAN_RAW" | grep -E "Plan:|No changes" | tail -1 || echo "Plan completed")
+          delim="EOF_$(openssl rand -hex 16)"
+          {
+            echo "PLAN_SUMMARY<<${delim}"
+            echo "$plan_summary"
+            echo "${delim}"
+            echo "PLAN_OUTPUT<<${delim}"
+            printf '%s\n' "$PLAN_RAW" | tail -100
+            echo "${delim}"
+          } >> "$GITHUB_OUTPUT"
 
       # Post plan results as a PR comment for easy review
       - name: Comment PR with Plan
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
         if: github.event_name == 'pull_request'
         env:
           PLAN_SUMMARY: ${{ steps.summary.outputs.PLAN_SUMMARY }}
