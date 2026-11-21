@@ -97,7 +97,7 @@ jobs:
             ERR_FILE=$(mktemp /tmp/kubeconfig-err-XXXXXX)
             trap 'rm -f "${KUBECONFIG_FILE}" "${ERR_FILE}"' RETURN
 
-            (cd "${k8s_dir}" && doppler run -- \
+            (cd "${k8s_dir}" && "$GITHUB_WORKSPACE/scripts/doppler-tf.sh" \
               terragrunt output -raw kubeconfig) > "${KUBECONFIG_FILE}" 2>"${ERR_FILE}" || true
 
             if [ ! -s "${KUBECONFIG_FILE}" ]; then
@@ -170,5 +170,5 @@ jobs:
           
           echo "Executing: terragrunt $CMD"
           
-          doppler run -- \
+          "$GITHUB_WORKSPACE/scripts/doppler-tf.sh" \
             terragrunt $CMD

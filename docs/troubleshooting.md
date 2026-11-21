@@ -26,7 +26,7 @@ This guide covers common issues encountered when working with the infrastructure
 **Cause**: Doppler token is missing or expired in the current shell session.
 **Solution**:
 1. Ensure you are logged in: `doppler login`
-2. Run commands using the wrapper: `make plan-dev` or `doppler run -- terragrunt plan`
+2. Run commands using the wrapper: `make plan-dev` or `scripts/doppler-tf.sh terragrunt plan`
 
 ## Kubernetes (DOKS)
 

@@ -1,7 +1,6 @@
 # ====== CONFIG ======
-# Doppler injects secrets under their exact names: TF_VAR_* for Terraform inputs,
-# AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY for the Spaces state backend.
-DOPPLER=doppler run -- sh -c
+# Secrets from Doppler (see scripts/doppler-tf.sh for why a wrapper is needed)
+DOPPLER=./scripts/doppler-tf.sh sh -c
 LIVE_DIR=infra/terraform/live
 
 # ====== HELPERS ======

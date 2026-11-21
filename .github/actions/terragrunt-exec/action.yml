@@ -39,9 +39,8 @@ runs:
 
         # Disable exit-on-error to capture output even if command fails
         set +e
-        # Doppler injects secrets under their exact names: TF_VAR_* for Terraform
-        # inputs, AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY for the Spaces state backend.
-        output=$(doppler run -- \
+        # Secrets from Doppler: TF_VAR_* inputs + Spaces backend keys (see scripts/doppler-tf.sh)
+        output=$("$GITHUB_WORKSPACE/scripts/doppler-tf.sh" \
           terragrunt ${{ inputs.command }} ${{ inputs.extra-args }} 2>&1)
         exit_code=$?
         set -e

@@ -104,5 +104,5 @@ jobs:
           
           echo "Executing: terragrunt $CMD"
 
-          doppler run -- \
+          "$GITHUB_WORKSPACE/scripts/doppler-tf.sh" \
             terragrunt $CMD
