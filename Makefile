@@ -1,5 +1,7 @@
 # ====== CONFIG ======
-DOPPLER=doppler run --name-transformer tf-var -- sh -c
+# Outer run: plain secrets (AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY for the Spaces state backend).
+# Inner run: the same secrets as TF_VAR_* for Terraform input variables.
+DOPPLER=doppler run -- doppler run --name-transformer tf-var -- sh -c
 LIVE_DIR=infra/terraform/live
 
 # ====== HELPERS ======

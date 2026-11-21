@@ -24,6 +24,11 @@ on:
           - kubernetes
           - argocd
 
+# Serialize every state-changing run (deploy and destroy share this group)
+concurrency:
+  group: terraform-state
+  cancel-in-progress: false
+
 env:
   TERRAFORM_VERSION: '1.14.0'
   TERRAGRUNT_VERSION: '0.93.11'
@@ -74,8 +79,7 @@ jobs:
       - name: Deploy Infrastructure
         env:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
-          TF_VAR_tf_cloud_token: ${{ secrets.TF_CLOUD_TOKEN }}
-          TF_TOKEN_app_terraform_io: ${{ secrets.TF_CLOUD_TOKEN }}
+          TF_CLI_ARGS_apply: -lock-timeout=5m
           TG_NON_INTERACTIVE: "true"
           RESOURCE: ${{ inputs.resource || 'all' }}
         run: |
@@ -100,5 +104,6 @@ jobs:
           
           echo "Executing: terragrunt $CMD"
 
-          doppler run --name-transformer tf-var -- \
+          # Outer run: plain secrets (Spaces state backend keys); inner run: TF_VAR_* inputs
+          doppler run -- doppler run --name-transformer tf-var -- \
             terragrunt $CMD

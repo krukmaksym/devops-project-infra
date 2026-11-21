@@ -87,10 +87,10 @@ This project serves as a comprehensive demonstration of Senior DevOps and SRE ca
 
           │                                    │
           ▼                                    ▼
-    ┌──────────┐                        ┌──────────┐
-    │ Doppler  │                        │Terraform │
-    │ Secrets  │                        │  Cloud   │
-    └──────────┘                        └──────────┘
+    ┌──────────┐                        ┌──────────────┐
+    │ Doppler  │                        │  DO Spaces   │
+    │ Secrets  │                        │ (TF state)   │
+    └──────────┘                        └──────────────┘
 ```
 
 ---
@@ -101,7 +101,7 @@ This project serves as a comprehensive demonstration of Senior DevOps and SRE ca
 - **IaC**: Terraform 1.14.0 + Terragrunt 0.93.11 (DRY configuration)
 - **Cloud Provider**: DigitalOcean
 - **Container Orchestration**: Kubernetes (DOKS) 1.35.1
-- **State Management**: Terraform Cloud
+- **State Management**: DigitalOcean Spaces (S3 backend, native lockfile locking)
 - **Secrets Management**: Doppler
 
 ### DevOps Tools (Implemented)
@@ -208,17 +208,17 @@ doppler --version
    doppler setup
    # Add required secrets (uppercase in Doppler UI):
    # - DO_TOKEN (DigitalOcean API token - will become TF_VAR_do_token)
+   # - AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (Spaces key for the state bucket)
    ```
 
-4. **Configure Terraform Cloud**
-   - Create organization: `my-devops-project`
-   - Workspaces will be auto-created by Terragrunt
+4. **Create the state bucket** (one-time, DigitalOcean console)
+   - Spaces bucket `devops-project-infra-tfstate` in `fra1`, **versioning enabled**
+   - Spaces access key limited to that bucket (read/write); store it in Doppler as above
 
 5. **Configure GitHub Secrets** (for CI/CD)
    ```bash
    # Repository secrets (Settings > Secrets and variables > Actions):
    # - DOPPLER_TOKEN: Your Doppler service token
-   # - TF_CLOUD_TOKEN: Your Terraform Cloud API token
    # - ANTHROPIC_API_KEY: Anthropic API key (for @claude PR reviews)
    ```
 
@@ -246,7 +246,7 @@ doppler --version
 | **ArgoCD module** | GitOps controller bootstrapped via Terraform Helm, ClusterIP service (port-forward access), GitHub OAuth SSO prepared (Dex), team-scoped RBAC |
 | **Terragrunt DRY config** | Centralized `_env/` configs, per-module provider generation, mock outputs for CI |
 | **Doppler integration** | Secrets injected as `TF_VAR_*` via Doppler CLI |
-| **Remote state** | Terraform Cloud backend with per-workspace isolation |
+| **Remote state** | DigitalOcean Spaces S3 backend, one state file per stack, native lockfile locking, bucket versioning |
 | **CI/CD Pipeline** | 4 GitHub Actions workflows: PR validation, deployment, destroy, AI code review (Claude) |
 | **Deployment gates** | Manual-only deploys; GitHub Environments with required reviewers on `prod` |
 | **Supply-chain hardening** | SHA-pinned actions, Dependabot, committed provider lock files |
@@ -353,9 +353,11 @@ On-demand AI code review triggered by commenting `@claude` on an open pull reque
 
 #### Secrets Management
 
-The workflow uses a hybrid approach:
-- **Doppler**: Terraform input variables (e.g., `DO_TOKEN` → `TF_VAR_do_token`)
-- **GitHub Secrets**: Terraform Cloud token (`TF_CLOUD_TOKEN` → `TF_TOKEN_app_terraform_io`)
+All secrets live in Doppler; GitHub only stores `DOPPLER_TOKEN`. Terragrunt runs under two nested `doppler run` calls:
+- **Outer**: secrets under their own names, e.g. `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` for the Spaces state backend
+- **Inner** (`--name-transformer tf-var`): the same secrets as Terraform inputs, e.g. `DO_TOKEN` → `TF_VAR_do_token`
+
+Deploy and destroy share a `terraform-state` concurrency group, so state-changing runs never overlap.
 
 ---
 
@@ -368,7 +370,7 @@ The workflow uses a hybrid approach:
 - [x] Kubernetes module (DOKS with app + monitoring node pools, taints, auto-scaling)
 - [x] Monitoring module (VictoriaMetrics + Grafana via Helm)
 - [x] Doppler secrets management integration
-- [x] Terraform Cloud remote state
+- [x] Remote state (Terraform Cloud, migrated to DigitalOcean Spaces)
 - [x] Pre-commit hooks (fmt, tflint, tfsec, trivy, checkov, terraform-docs)
 - [x] CI/CD pipelines (PR validation, deployment, destroy, AI code review)
 - [x] Security scanning in CI (Trivy, Checkov, tfsec)
