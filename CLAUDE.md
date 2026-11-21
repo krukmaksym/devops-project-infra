@@ -15,7 +15,7 @@ DevOps portfolio infrastructure on DigitalOcean: Terragrunt + Terraform (DOKS, V
 ## Terraform / Terragrunt
 - Environment-specific config goes in `live/_env/*.hcl`; per-stack `terragrunt.hcl` files only wire dependencies.
 - Commit `.terraform.lock.hcl` for every stack when providers change.
-- Kubernetes version stays consistent across envs (currently `1.35.1-do.1`).
+- Kubernetes version stays consistent across envs (currently `1.37.2-do.0`).
 - Node pools: `monitoring` is tainted `service=monitoring:NoSchedule`; the app pool stays untainted (system pods); node pools use `create_before_destroy = true`.
 
 ## GitOps

@@ -35,8 +35,8 @@ locals {
 
   argocd = {
     dev = {
-      argocd_chart_version       = "7.8.13"
-      argocd_apps_chart_version  = "2.0.2"
+      argocd_chart_version       = "10.18.2"
+      argocd_apps_chart_version  = "2.0.8"
       environment                = "dev"
       server_insecure            = true # Phase 1 only — access via port-forward
       admin_enabled              = true # Phase 1 only — disable once OAuth is configured
@@ -53,8 +53,8 @@ locals {
     }
 
     stage = {
-      argocd_chart_version       = "7.8.13"
-      argocd_apps_chart_version  = "2.0.2"
+      argocd_chart_version       = "10.18.2"
+      argocd_apps_chart_version  = "2.0.8"
       environment                = "stage"
       server_insecure            = false
       admin_enabled              = false
@@ -71,8 +71,8 @@ locals {
     }
 
     prod = {
-      argocd_chart_version       = "7.8.13"
-      argocd_apps_chart_version  = "2.0.2"
+      argocd_chart_version       = "10.18.2"
+      argocd_apps_chart_version  = "2.0.8"
       environment                = "prod"
       server_insecure            = false
       admin_enabled              = false

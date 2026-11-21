@@ -12,7 +12,7 @@ variable "argocd_chart_version" {
 variable "argocd_apps_chart_version" {
   description = "Helm chart version for argocd-apps (App-of-Apps bootstrap)"
   type        = string
-  default     = "2.0.2"
+  default     = "2.0.8"
 }
 
 variable "environment" {
