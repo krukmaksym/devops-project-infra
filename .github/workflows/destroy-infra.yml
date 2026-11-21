@@ -97,7 +97,7 @@ jobs:
             ERR_FILE=$(mktemp /tmp/kubeconfig-err-XXXXXX)
             trap 'rm -f "${KUBECONFIG_FILE}" "${ERR_FILE}"' RETURN
 
-            (cd "${k8s_dir}" && doppler run -- doppler run --name-transformer tf-var -- \
+            (cd "${k8s_dir}" && doppler run -- \
               terragrunt output -raw kubeconfig) > "${KUBECONFIG_FILE}" 2>"${ERR_FILE}" || true
 
             if [ ! -s "${KUBECONFIG_FILE}" ]; then
@@ -170,6 +170,5 @@ jobs:
           
           echo "Executing: terragrunt $CMD"
           
-          # Outer run: plain secrets (Spaces state backend keys); inner run: TF_VAR_* inputs
-          doppler run -- doppler run --name-transformer tf-var -- \
+          doppler run -- \
             terragrunt $CMD

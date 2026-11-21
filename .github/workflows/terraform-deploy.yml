@@ -104,6 +104,5 @@ jobs:
           
           echo "Executing: terragrunt $CMD"
 
-          # Outer run: plain secrets (Spaces state backend keys); inner run: TF_VAR_* inputs
-          doppler run -- doppler run --name-transformer tf-var -- \
+          doppler run -- \
             terragrunt $CMD

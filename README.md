@@ -207,7 +207,7 @@ doppler --version
    doppler login
    doppler setup
    # Add required secrets (uppercase in Doppler UI):
-   # - DO_TOKEN (DigitalOcean API token - will become TF_VAR_do_token)
+   # - TF_VAR_do_token (DigitalOcean API token; the TF_VAR_ prefix makes it a Terraform input)
    # - AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY (Spaces key for the state bucket)
    ```
 
@@ -340,7 +340,6 @@ On-demand AI code review triggered by commenting `@claude` on an open pull reque
 - Executes Terragrunt commands with Doppler secrets injection
 - Handles exit codes properly for workflow failure detection
 - Captures output for PR comments
-- Uses `tf-var` name transformer for Terraform variables
 - TF Cloud token passed directly to avoid transformation
 
 #### Workflow Security
@@ -353,9 +352,9 @@ On-demand AI code review triggered by commenting `@claude` on an open pull reque
 
 #### Secrets Management
 
-All secrets live in Doppler; GitHub only stores `DOPPLER_TOKEN`. Terragrunt runs under two nested `doppler run` calls:
-- **Outer**: secrets under their own names, e.g. `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` for the Spaces state backend
-- **Inner** (`--name-transformer tf-var`): the same secrets as Terraform inputs, e.g. `DO_TOKEN` → `TF_VAR_do_token`
+All secrets live in Doppler; GitHub only stores `DOPPLER_TOKEN`. Terragrunt runs under `doppler run`, which injects each secret under its exact Doppler name:
+- **Terraform inputs** are stored with the `TF_VAR_` prefix, e.g. `TF_VAR_do_token` → `var.do_token`
+- **Backend credentials** are stored as `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (Spaces key) for the S3 backend
 
 Deploy and destroy share a `terraform-state` concurrency group, so state-changing runs never overlap.
 
@@ -460,17 +459,17 @@ make destroy-all   # Destroy all environments (dangerous!)
 cd infra/terraform/live/dev/network
 
 # Initialize
-doppler run --name-transformer tf-var -- terragrunt init
+doppler run -- terragrunt init
 
 # Plan
-doppler run --name-transformer tf-var -- terragrunt plan
+doppler run -- terragrunt plan
 
 # Apply
-doppler run --name-transformer tf-var -- terragrunt apply
+doppler run -- terragrunt apply
 
 # Run all modules in environment
 cd infra/terraform/live/dev
-doppler run --name-transformer tf-var -- terragrunt run-all apply
+doppler run -- terragrunt run-all apply
 ```
 
 ### Accessing Kubernetes Clusters
@@ -532,7 +531,7 @@ Each environment tracks its own Git revision, controlled via `infra/terraform/li
 4. **Apply ArgoCD via Terragrunt** (or let the CI pipeline pick it up):
    ```bash
    cd infra/terraform/live/stage/argocd
-   doppler run --name-transformer tf-var -- terragrunt apply
+   doppler run -- terragrunt apply
    ```
    Terraform updates the `argocd-apps` Helm release, which patches the root `Application`'s `targetRevision`. ArgoCD detects the change and syncs the stage cluster to the new tag.
 
